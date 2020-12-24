@@ -1,6 +1,12 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+# VM name visible in UI
+BOX_NAME = "monitoring"
+
+# Vagrant base box to use
+BOX_BASE = "centos/7"
+
 $msg = <<MSG
 ------------------------------------------------------
 Use Below URLS to access Jenkins, Prometheus, Grafana
@@ -21,15 +27,17 @@ MSG
 # backwards compatibility). Please don't change it unless you know what
 # you're doing.
 Vagrant.configure("2") do |config|
-  config.vm.box = "centos/7"
-  config.vm.define "vdjpg" do |node|
-    node.vm.hostname = "vdjpg"
+  config.vm.box = BOX_BASE
+  config.vm.define BOX_NAME do |node|
+    node.vm.hostname = BOX_NAME
     node.vm.network "private_network", ip: "192.168.33.10"
     config.vm.provider "virtualbox" do |v|
+      v.name = BOX_NAME
       v.memory = 2048
       v.cpus = 1
     end
     config.vm.provider "libvirt" do |vl|
+      vl.name = BOX_NAME
       vl.memory = 2048
       vl.cpus = 1
     end
@@ -51,9 +59,9 @@ Vagrant.configure("2") do |config|
     sudo docker run  --env JAVA_OPTS="-Djenkins.install.runSetupWizard=false" \
     -v /vagrant/jenkins/install.groovy:/usr/share/jenkins/ref/init.groovy.d/install.groovy \
     -v /vagrant/jenkins/jobs:/var/jenkins_home/jobs \
-    -d --name jenkins -p 8080:8080 -p 50000:50000 jenkins/jenkins:2.164.1 >/dev/null 2>&1
-    sudo docker run -d --name prometheus -p 9090:9090 prom/prometheus:v2.8.0 >/dev/null 2>&1
-    sudo docker run -d -v /vagrant/provisioning/:/etc/grafana/provisioning --name grafana -p 3000:3000 grafana/grafana:6.0.2 >/dev/null 2>&1
+    -d --name jenkins -p 8080:8080 -p 50000:50000 jenkins/jenkins:2.249.1 >/dev/null 2>&1
+    sudo docker run -d --name prometheus -p 9090:9090 prom/prometheus:v2.23.0 >/dev/null 2>&1
+    sudo docker run -d -v /vagrant/provisioning/:/etc/grafana/provisioning --name grafana -p 3000:3000 grafana/grafana:7.3.5 >/dev/null 2>&1
     echo ""
     echo "Manage Docker Images ...."
     echo ""
@@ -61,7 +69,7 @@ Vagrant.configure("2") do |config|
     sudo docker exec ${PROMID} sh -c 'printf "\n  - job_name: 'jenkins'\n    metrics_path: /prometheus\n    static_configs:\n    - targets: ['192.168.33.10:8080']\n" >> /etc/prometheus/prometheus.yml'
     sudo docker restart ${PROMID} >/dev/null 2>&1
     DOCKID=$(sudo docker ps | grep jenkins | awk '{ print $1 }')
-    sudo docker exec ${DOCKID} sh -c '/usr/local/bin/install-plugins.sh prometheus' >/dev/null 2>&1
+    sudo docker exec ${DOCKID} sh -c '/usr/local/bin/install-plugins.sh prometheus:2.0.8' >/dev/null 2>&1
     sudo docker restart ${DOCKID} >/dev/null 2>&1
   SHELL
   config.vm.post_up_message = $msg
